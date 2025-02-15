@@ -17,8 +17,8 @@ cg_name = ['酒店国王房', '雷达站无人机平台', '酒店王子房', '�
 db_name = ['东楼经理室', '变电站技术室', '西楼调控房', '西楼监视室', '售票办公室', '军营保管室', '设备领用室', '水泥厂宿舍201', '中心贵宾室', '水泥厂办公室', '地下通道钥匙', '西楼医务室', '变电站宿舍']
 
 test_buy_name = '酒店国王房'
-test_buy_price_max = 320 * 10000
-test_buy_price_min = 260 * 10000
+test_buy_price_max = 280 * 10000
+test_buy_price_min = 200 * 10000
 
 def match_strings(correct_strings, error_strings):
     matched_strings = []
@@ -69,11 +69,11 @@ def get_card_price(image):
 
 # 获取卡牌名称
 card_name = []
-screenshot = take_screenshot()
+screenshot = take_screenshot((card_region[0], card_region[1], card_pixel[0] * 3, card_pixel[1] * 5))
 for i in range(5):
     for j in range(3):
-        card_im = screenshot[card_region[1] + card_pixel[1] * i : card_region[1] + card_pixel[1] * (i+1), \
-                     card_region[0] + card_pixel[0] * j : card_region[0] + card_pixel[0] * (j + 1)]
+        card_im = screenshot[card_pixel[1] * i : card_pixel[1] * (i+1), \
+                     card_pixel[0] * j : card_pixel[0] * (j + 1)]
         card_name_im = card_im[ : name_pixel[1], : name_pixel[0]]
         card_name.append(get_card_name(card_name_im))
 print(match_strings(cg_name, card_name))
@@ -81,7 +81,8 @@ print(match_strings(cg_name, card_name))
 buy_card_index = [card_name.index(test_buy_name)%3, card_name.index(test_buy_name)//3]
 print(buy_card_index)
 
-running = False 
+running = False
+min_price = 99999999
 while True:
     if keyboard.is_pressed('s'):  # 检测是否按下 's' 键
         running = True
@@ -91,14 +92,21 @@ while True:
         click_position([card_region[0]+card_pixel[0]//2+card_pixel[0]*buy_card_index[0], \
                         card_region[1]+card_pixel[1]//2+card_pixel[1]*buy_card_index[1]])
         # 获取价格
-        screenshot = take_screenshot()
-        card_price = get_card_price(screenshot[price_region[1] : price_region[1] + price_pixel[1], \
-        price_region[0] : price_region[0] + price_pixel[0]])
-        print(card_price)
-        if card_price <= test_buy_price_max and card_price >= test_buy_price_min:
-            print('buy')
+        screenshot = take_screenshot(region=(price_region[0], price_region[1], price_pixel[0], price_pixel[1]))
+        card_price = get_card_price(screenshot)
+        if card_price <= test_buy_price_max and card_price >= test_buy_price_min and card_price > 0:
             click_position([price_region[0], price_region[1]+60])
-            running = False
+            if min_price > card_price:
+                min_price = card_price
+                print('min_price', min_price)
+            screenshot = take_screenshot((2204, 60, 80, 20))
+            wallet_price = get_card_price(screenshot)
+            print('wallet_price', wallet_price)
+            if wallet_price < 44420 and wallet_price > 40000:
+                print('bought')
+                running = False
+            else:
+                continue
         pyautogui.press('esc')
         # time.sleep(1)
         if keyboard.is_pressed('w'):  # 按下 'w' 键可以暂停循环
