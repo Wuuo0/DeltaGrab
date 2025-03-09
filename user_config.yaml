@@ -2,5 +2,9 @@ device_adaptation:
   screen_pixel: [2560, 1440]
 
 buy_option:
-  buy_card_name: 酒店国王房
-  buy_price_max: 250
+  buy_card_name: 西区大门
+  buy_price_max: 88
+  buy_price_min: 60
+
+wallet_option:
+  now_money: 73341

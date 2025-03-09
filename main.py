@@ -5,20 +5,15 @@ import time
 import pytesseract
 from difflib import SequenceMatcher
 import keyboard
+import yaml
+import sys
 
-screen_pixel = [2560, 1440]
-card_region = [583, 208]
-card_pixel = [625, 212]
-name_pixel = [178, 27]
-price_region = [2184, 1172]
-price_pixel = [116, 23]
+with open('pre_config.yaml', 'r', encoding='utf-8') as fin:
+    pre_configs = yaml.load(fin, Loader=yaml.FullLoader)
 
-cg_name = ['酒店国王房', '雷达站无人机平台', '酒店王子房', '雷达站数据中心', '实验楼资料室', '酒店黑桃房', '雷达站控制室', '实验楼办公室', '酒店将军房', '酒店方片房', '小镇餐厅', '运输机会议室']
-db_name = ['东楼经理室', '变电站技术室', '西楼调控房', '西楼监视室', '售票办公室', '军营保管室', '设备领用室', '水泥厂宿舍201', '中心贵宾室', '水泥厂办公室', '地下通道钥匙', '西楼医务室', '变电站宿舍']
+with open('user_config.yaml', 'r', encoding='utf-8') as fin:
+    user_configs = yaml.load(fin, Loader=yaml.FullLoader)
 
-test_buy_name = '酒店国王房'
-test_buy_price_max = 280 * 10000
-test_buy_price_min = 200 * 10000
 
 def match_strings(correct_strings, error_strings):
     matched_strings = []
@@ -37,78 +32,97 @@ def match_strings(correct_strings, error_strings):
 
     return matched_strings
 
-# 获取屏幕截图
-def take_screenshot(region = None):
-    screenshot = pyautogui.screenshot(region = region)
+
+def take_screenshot(region=None):
+    screenshot = pyautogui.screenshot(region=region)
     screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)
     return screenshot
 
-# 点击指定位置
+
 def click_position(position):
-    pyautogui.click(position[0], position[1])
+    pyautogui.moveTo(position[0], position[1], duration=0.1)
+    pyautogui.click()
+
 
 def show_image(image):
     cv2.imshow('image', image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
 def get_card_name(image):
-    ret, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    card_name = pytesseract.image_to_string(image, lang='tessdata\chi_sim', config='--psm 13')
+    ret, image = cv2.threshold(
+        image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    card_name = pytesseract.image_to_string(
+        image, lang='tessdata\chi_sim', config='--psm 13')
     card_name = card_name.replace('\n', '').replace(' ', '')
     return card_name
 
+
 def get_card_price(image):
-    ret, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    card_price = pytesseract.image_to_string(image, lang='tessdata\eng', config='--psm 13 -c tessedit_char_whitelist=\'0123456789\'')
+    ret, image = cv2.threshold(
+        image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    card_price = pytesseract.image_to_string(
+        image, lang='tessdata\eng', config='--psm 13 -c tessedit_char_whitelist=\'0123456789\'')
     card_price = card_price.replace('\n', '').replace(' ', '')
     try:
         return int(card_price)
     except ValueError:
-        return 999999999
+        return sys.maxsize
+
 
 # 获取卡牌名称
 card_name = []
-screenshot = take_screenshot((card_region[0], card_region[1], card_pixel[0] * 3, card_pixel[1] * 5))
+screenshot = take_screenshot((pre_configs['coordinate_position']['card_region'][0], pre_configs['coordinate_position']['card_region']
+                             [1], pre_configs['coordinate_position']['card_pixel'][0] * 3, pre_configs['coordinate_position']['card_pixel'][1] * 5))
 for i in range(5):
     for j in range(3):
-        card_im = screenshot[card_pixel[1] * i : card_pixel[1] * (i+1), \
-                     card_pixel[0] * j : card_pixel[0] * (j + 1)]
-        card_name_im = card_im[ : name_pixel[1], : name_pixel[0]]
+        card_im = screenshot[pre_configs['coordinate_position']['card_pixel'][1] * i: pre_configs['coordinate_position']['card_pixel'][1] * (i+1),
+                             pre_configs['coordinate_position']['card_pixel'][0] * j: pre_configs['coordinate_position']['card_pixel'][0] * (j + 1)]
+        card_name_im = card_im[: pre_configs['coordinate_position']['name_pixel']
+                               [1], : pre_configs['coordinate_position']['name_pixel'][0]]
         card_name.append(get_card_name(card_name_im))
-print(match_strings(cg_name, card_name))
+print(card_name)
+# 对各张地图中卡牌名字尝试匹配，找到匹配最符合的地图
+card_name = [match_strings(pre_configs['card_name']['db'], card_name), match_strings(pre_configs['card_name']['cg'], card_name),
+             match_strings(pre_configs['card_name']['ht'], card_name), match_strings(pre_configs['card_name']['bks'], card_name)][[len(match_strings(pre_configs['card_name']['db'], card_name)), len(match_strings(pre_configs['card_name']['cg'], card_name)),
+                                                                                                                                   len(match_strings(pre_configs['card_name']['ht'], card_name)), len(match_strings(pre_configs['card_name']['bks'], card_name))].index(
+                 max(len(match_strings(pre_configs['card_name']['db'], card_name)), len(match_strings(pre_configs['card_name']['cg'], card_name)),
+                     len(match_strings(pre_configs['card_name']['ht'], card_name)), len(match_strings(pre_configs['card_name']['bks'], card_name))))]
 
-buy_card_index = [card_name.index(test_buy_name)%3, card_name.index(test_buy_name)//3]
+print(card_name)
+
+buy_card_index = [card_name.index(user_configs['buy_option']['buy_card_name']) % 3, card_name.index(
+    user_configs['buy_option']['buy_card_name'])//3]
 print(buy_card_index)
 
-running = False
-min_price = 99999999
-while True:
-    if keyboard.is_pressed('s'):  # 检测是否按下 's' 键
-        running = True
-        print("start")
-    
-    while running:
-        click_position([card_region[0]+card_pixel[0]//2+card_pixel[0]*buy_card_index[0], \
-                        card_region[1]+card_pixel[1]//2+card_pixel[1]*buy_card_index[1]])
-        # 获取价格
-        screenshot = take_screenshot(region=(price_region[0], price_region[1], price_pixel[0], price_pixel[1]))
-        card_price = get_card_price(screenshot)
-        if card_price <= test_buy_price_max and card_price >= test_buy_price_min and card_price > 0:
-            click_position([price_region[0], price_region[1]+60])
-            if min_price > card_price:
-                min_price = card_price
-                print('min_price', min_price)
-            screenshot = take_screenshot((2204, 60, 80, 20))
-            wallet_price = get_card_price(screenshot)
-            print('wallet_price', wallet_price)
-            if wallet_price < 44420 and wallet_price > 40000:
-                print('bought')
-                running = False
-            else:
-                continue
-        pyautogui.press('esc')
-        # time.sleep(1)
-        if keyboard.is_pressed('w'):  # 按下 'w' 键可以暂停循环
+running = True
+min_price = sys.maxsize
+
+while running:
+    click_position([pre_configs['coordinate_position']['card_region'][0]+pre_configs['coordinate_position']['card_pixel'][0]//2+pre_configs['coordinate_position']['card_pixel'][0]*buy_card_index[0],
+                    pre_configs['coordinate_position']['card_region'][1]+pre_configs['coordinate_position']['card_pixel'][1]//2+pre_configs['coordinate_position']['card_pixel'][1]*buy_card_index[1]])
+    # 获取价格
+    screenshot = take_screenshot(region=(pre_configs['coordinate_position']['price_region'][0], pre_configs['coordinate_position']
+                                 ['price_region'][1], pre_configs['coordinate_position']['price_pixel'][0], pre_configs['coordinate_position']['price_pixel'][1]))
+    card_price = get_card_price(screenshot)
+    if card_price <= user_configs['buy_option']['buy_price_max'] * 10000 and card_price >= user_configs['buy_option']['buy_price_min'] * 10000 and card_price > 0:
+        click_position([pre_configs['coordinate_position']['price_region']
+                       [0], pre_configs['coordinate_position']['price_region'][1]+60])
+        time.sleep(1)
+        if min_price > card_price:
+            min_price = card_price
+            print('min_price', min_price)
+        screenshot = take_screenshot((pre_configs['coordinate_position']['wallet_region'][0], pre_configs['coordinate_position']['wallet_region']
+                                     [1], pre_configs['coordinate_position']['wallet_pixel'][0], pre_configs['coordinate_position']['wallet_pixel'][1]))
+        wallet_price = get_card_price(screenshot)
+        print('wallet_price', wallet_price)
+        if wallet_price < user_configs['wallet_option']['now_money'] and wallet_price >= (user_configs['wallet_option']['now_money'] - card_price):
+            print('bought')
             running = False
-            print("pause")
+        else:
+            continue
+    pyautogui.press('esc')
+    if keyboard.is_pressed('s'):
+        running = False
+        print("stop")
