@@ -1,0 +1,8 @@
+keyboard==0.13.5
+numpy==2.2.3
+opencv_contrib_python==4.11.0.86
+opencv_python==4.11.0.86
+opencv_python_headless==4.11.0.86
+PyAutoGUI==0.9.54
+pytesseract==0.3.13
+PyYAML==6.0.2
