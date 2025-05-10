@@ -2,9 +2,9 @@ device_adaptation:
   screen_pixel: [2560, 1440]
 
 buy_option:
-  buy_card_name: 西区大门
-  buy_price_max: 88
-  buy_price_min: 60
+  buy_card_name: 蓝室核心
+  buy_price_max: 310
+  buy_price_min: 1
 
 wallet_option:
-  now_money: 73341
+  now_money: 24854
